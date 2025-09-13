@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import type { Sensor } from '../types'
 import { getAllLastValues } from '../api/mockApis'
+import SensorTableRow from './tableComponents/SensorTableRow.vue'
+import SensorTableHead from './tableComponents/SensorTableHead.vue'
 
 interface Props {
   sensors: Sensor[]
@@ -89,85 +91,21 @@ const selectSensor = (sensor: Sensor) => {
     
     <div v-else class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th 
-              @click="sortBy('id', $event)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-            >
-              ID
-              <span v-if="sortColumn === 'id'">
-                {{ sortDirection === 'asc' ? '↑' : '↓' }}
-              </span>
-            </th>
-            <th 
-              @click="sortBy('name', $event)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-            >
-              Name
-              <span v-if="sortColumn === 'name'">
-                {{ sortDirection === 'asc' ? '↑' : '↓' }}
-              </span>
-            </th>
-            <th 
-              @click="sortBy('location', $event)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-            >
-              Location
-              <span v-if="sortColumn === 'location'">
-                {{ sortDirection === 'asc' ? '↑' : '↓' }}
-              </span>
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Last Value
-            </th>
-            <th 
-              @click="sortBy('status', $event)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-            >
-              Status
-              <span v-if="sortColumn === 'status'">
-                {{ sortDirection === 'asc' ? '↑' : '↓' }}
-              </span>
-            </th>
-          </tr>
-        </thead>
+        <SensorTableHead
+          :current-sort-column="sortColumn"
+          :sort-direction="sortDirection"
+          @sort="sortBy"
+        />
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr 
+          <SensorTableRow
             v-for="sensor in sortedSensors" 
             :key="sensor.id"
-            @click="selectSensor(sensor)"
-            class="hover:bg-gray-50 cursor-pointer"
-          >
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {{ sensor.id }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ sensor.name }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ sensor.location }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <span v-if="loadingLastValues" class="text-gray-400">Loading...</span>
-              <span v-else>{{ getLastValue(sensor.id) }}mm</span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span v-if="loadingLastValues" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">
-                Loading...
-              </span>
-              <span v-else
-                :class="[
-                  'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
-                  getStatus(sensor) === 'OK' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                ]"
-              >
-                {{ getStatus(sensor) }}
-              </span>
-            </td>
-          </tr>
+            :sensor="sensor"
+            :last-value="getLastValue(sensor.id)"
+            :loading-last-values="loadingLastValues"
+            :status="getStatus(sensor)"
+            @sensor-selected="selectSensor"
+          />
         </tbody>
       </table>
     </div>
