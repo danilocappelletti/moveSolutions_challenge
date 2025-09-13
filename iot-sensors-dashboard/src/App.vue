@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { Sensor } from './types'
+import Header from './components/main/Header.vue'
 import SensorTable from './components/SensorTable.vue'
 import SensorChart from './components/Chart.vue'
 
@@ -27,27 +28,11 @@ const handleSensorSelected = (sensor: Sensor) => {
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">IoT Sensors Dashboard</h1>
-            <p class="mt-1 text-gray-600">Monitor bridge and tunnel sensors</p>
-          </div>
-          <div class="flex items-center space-x-2">
-            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span class="text-sm text-gray-500">Live</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <Header />
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <!-- Sensors Table -->
-        <div class="space-y-6">
+      <div class="grid grid-cols-1 xl:grid-cols-7 gap-8">
+        <div class="xl:col-span-4 space-y-6">
           <SensorTable 
             :sensors="sensors" 
             :loading="loading"
@@ -55,8 +40,8 @@ const handleSensorSelected = (sensor: Sensor) => {
           />
         </div>
         
-        <!-- Chart -->
-        <div class="space-y-6">
+        <!-- Chart - takes 3 columns (~43%) -->
+        <div class="xl:col-span-3 space-y-6">
           <SensorChart :sensor="selectedSensor" />
         </div>
       </div>

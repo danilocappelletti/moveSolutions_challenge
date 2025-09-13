@@ -1,5 +1,7 @@
 import type { MeasurementResponse, Measurement } from '../types'
 
+// Cache to store generated measurements
+const measurementsCache: Record<string, MeasurementResponse> = {}
 
 const generateMockMeasurements = (threshold: number): Measurement[] => {
   const measurements: Measurement[] = []
@@ -28,6 +30,12 @@ export const fetchMeasurements = async (sensorId: string): Promise<MeasurementRe
 
   await new Promise(resolve => setTimeout(resolve, 400))
   
+  if (measurementsCache[sensorId]) {
+    console.log(`Using cached data for ${sensorId}`)
+    return measurementsCache[sensorId]
+  }
+  
+  console.log(`Generating new data for ${sensorId}`)
   const thresholds: Record<string, number> = {
     'SEN-001': 3.5,
     'SEN-002': 2.0,
@@ -35,9 +43,34 @@ export const fetchMeasurements = async (sensorId: string): Promise<MeasurementRe
   }
   
   const threshold = thresholds[sensorId] || 3.0
-  
-  return {
+  const data = {
     sensorId,
-    measurements: generateMockMeasurements( threshold)
+    measurements: generateMockMeasurements(threshold)
   }
+  
+  measurementsCache[sensorId] = data
+  
+  return data
+}
+
+export const getLastValue = (sensorId: string): number => {
+  const cachedData = measurementsCache[sensorId]
+  if (cachedData && cachedData.measurements.length > 0) {
+    const lastMeasurement = cachedData.measurements[cachedData.measurements.length - 1]
+    return lastMeasurement.disp_mm
+  }
+  return 0
+}
+
+export const getAllLastValues = async (): Promise<Record<string, number>> => {
+  const sensorIds = ['SEN-001', 'SEN-002', 'SEN-003']
+  const lastValues: Record<string, number> = {}
+  
+  // Generate data for all sensors if not cached
+  for (const sensorId of sensorIds) {
+    await fetchMeasurements(sensorId)
+    lastValues[sensorId] = getLastValue(sensorId)
+  }
+  
+  return lastValues
 }

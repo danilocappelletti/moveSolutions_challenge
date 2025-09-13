@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { Sensor } from '../types'
+import { getAllLastValues } from '../api/mockApis'
 
 interface Props {
   sensors: Sensor[]
@@ -16,14 +17,24 @@ const emit = defineEmits<{
 const sortColumn = ref<string>('')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
-const mockLastValues: Record<string, number> = {
-  'SEN-001': 2.8,
-  'SEN-002': 2.3, 
-  'SEN-003': 3.2
-}
+const lastValues = ref<Record<string, number>>({})
+const loadingLastValues = ref(true)
+
+onMounted(async () => {
+  loadingLastValues.value = true
+  
+  try {
+    const values = await getAllLastValues()
+    lastValues.value = values
+  } catch (error) {
+    console.error('Error fetching last values:', error)
+  } finally {
+    loadingLastValues.value = false
+  }
+})
 
 const getLastValue = (sensorId: string): number => {
-  return mockLastValues[sensorId] || 0
+  return lastValues.value[sensorId] || 0
 }
 
 const getStatus = (sensor: Sensor): 'OK' | 'ALARM' => {
@@ -35,13 +46,14 @@ const sortedSensors = computed(() => {
   if (!sortColumn.value) return props.sensors
   
   const sorted = [...props.sensors].sort((a, b) => {
-    let aValue = a[sortColumn.value as keyof Sensor]
-    let bValue = b[sortColumn.value as keyof Sensor]
+    let aValue: any = a[sortColumn.value as keyof Sensor]
+    let bValue: any = b[sortColumn.value as keyof Sensor]
 
     if (sortColumn.value === 'status') {
       aValue = getStatus(a)
       bValue = getStatus(b)
     }
+    
     if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1
     if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1
     return 0
@@ -137,10 +149,14 @@ const selectSensor = (sensor: Sensor) => {
               {{ sensor.location }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ getLastValue(sensor.id) }}mm
+              <span v-if="loadingLastValues" class="text-gray-400">Loading...</span>
+              <span v-else>{{ getLastValue(sensor.id) }}mm</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-              <span 
+              <span v-if="loadingLastValues" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">
+                Loading...
+              </span>
+              <span v-else
                 :class="[
                   'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
                   getStatus(sensor) === 'OK' 
