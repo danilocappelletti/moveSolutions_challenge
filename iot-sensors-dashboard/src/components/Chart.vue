@@ -2,7 +2,15 @@
 import { ref, watch, nextTick, onUnmounted } from 'vue'
 import Plotly from 'plotly.js-dist-min'
 import type { Sensor, MeasurementResponse } from '../types'
+import { useSensorStore } from '@/stores/sensorStore'
 import { fetchMeasurements } from '../api/mockApis'
+import { 
+  prepareChartData, 
+  createChartTraces, 
+  createChartLayout, 
+  createChartConfig 
+} from '../utils/chartConfig'
+
 import ChartInfo from './chartComponents/ChartInfo.vue'
 import ChartLoader from './chartComponents/ChartLoader.vue'
 import ChartEmpty from './chartComponents/ChartEmpty.vue'
@@ -18,6 +26,8 @@ const chartContainer = ref<HTMLDivElement>()
 const measurements = ref<MeasurementResponse | null>(null)
 const loading = ref(false)
 const chartCreated = ref(false)
+
+const sensorStore = useSensorStore()
 
 const clearChart = () => {
   if (chartContainer.value && chartCreated.value) {
@@ -57,6 +67,37 @@ const loadMeasurements = async (sensorId: string) => {
   }
 }
 
+const updateChartWithNewData = async () => {
+  if (!chartContainer.value || !measurements.value || !props.sensor || !chartCreated.value) return
+
+  try {
+    const data = await fetchMeasurements(props.sensor.id)
+    measurements.value = data
+    
+    const { measurements: measurementData } = data
+    const threshold = props.sensor.threshold
+    
+    const timestamps = measurementData.map(m => m.timestamp)
+    const values = measurementData.map(m => m.disp_mm)
+    
+    const measurementUpdate = {
+      x: [timestamps],
+      y: [values],
+      'marker.color': [values.map(val => val > threshold ? '#EF4444' : '#10B981')]
+    }
+    
+    const thresholdUpdate = {
+      x: [[timestamps[0], timestamps[timestamps.length - 1]]],
+      y: [[threshold, threshold]]
+    }
+    
+    Plotly.restyle(chartContainer.value, measurementUpdate, [0])
+    Plotly.restyle(chartContainer.value, thresholdUpdate, [1])
+  } catch (err) {
+    console.error('Error updating chart:', err)
+  }
+}
+
 watch(() => props.sensor, async (newSensor) => {
   if (newSensor) {
     await loadMeasurements(newSensor.id)
@@ -66,72 +107,22 @@ watch(() => props.sensor, async (newSensor) => {
   }
 }, { immediate: true })
 
+watch(() => sensorStore.latestMeasurements, async (newMeasurements) => {
+  if (props.sensor && newMeasurements[props.sensor.id] && chartCreated.value) {
+    await updateChartWithNewData()
+  }
+}, { deep: true })
+
 const createChart = async () => {
   if (!chartContainer.value || !measurements.value || !props.sensor) return
 
   try {
     const { measurements: data } = measurements.value
-    const threshold = props.sensor.threshold
     
-    const timestamps = data.map(m => m.timestamp)
-    const values = data.map(m => m.disp_mm)
-    
-    const measurementTrace = {
-      x: timestamps,
-      y: values,
-      type: 'scatter',
-      mode: 'lines+markers',
-      name: 'Displacement',
-      line: { color: '#3B82F6', width: 2 },
-      marker: { 
-        size: 6, 
-        color: values.map(val => val > threshold ? '#EF4444' : '#10B981'), 
-        line: { width: 1, color: '#ffffff' }
-      }
-    }
-    
-    const thresholdTrace = {
-      x: [timestamps[0], timestamps[timestamps.length - 1]],
-      y: [threshold, threshold],
-      type: 'scatter',
-      mode: 'lines',
-      name: 'Threshold',
-      line: { color: '#F59E0B', dash: 'dash', width: 3 }
-    }
-    
-    const traces = [measurementTrace, thresholdTrace]
-    
-    const layout = {
-      title: {
-        text: `${props.sensor.name} - Displacement Monitoring`,
-        font: { size: 18, color: '#1F2937' }
-      },
-      xaxis: { 
-        title: 'Time',
-        gridcolor: '#F3F4F6',
-        showgrid: true
-      },
-      yaxis: { 
-        title: 'Displacement (mm)',
-        gridcolor: '#F3F4F6',
-        showgrid: true
-      },
-      margin: { t: 60, r: 50, b: 60, l: 60 },
-      height: 400,
-      autosize: true,
-      plot_bgcolor: '#FAFAFA',
-      paper_bgcolor: '#FFFFFF',
-      legend: {
-        orientation: 'h',
-        x: 0,
-        y: -0.2
-      }
-    }
-    
-    const config = {
-      responsive: true,
-      displayModeBar: false
-    }
+    const chartData = prepareChartData(data, props.sensor)
+    const traces = createChartTraces(chartData)
+    const layout = createChartLayout(props.sensor.name)
+    const config = createChartConfig()
     
     await Plotly.newPlot(chartContainer.value, traces, layout, config)
     chartCreated.value = true

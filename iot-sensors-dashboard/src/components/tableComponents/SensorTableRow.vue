@@ -7,6 +7,7 @@ interface Props {
   lastValue: number
   loadingLastValues: boolean
   status: 'OK' | 'ALARM'
+  selectedSensor: Sensor | null
 }
 
 const props = defineProps<Props>()
@@ -18,12 +19,21 @@ const emit = defineEmits<{
 const handleClick = () => {
   emit('sensorSelected', props.sensor)
 }
+
+const isSelected = () => {
+  return props.selectedSensor?.id === props.sensor.id
+}
 </script>
 
 <template>
   <tr 
     @click="handleClick"
-    class="hover:bg-gray-50 cursor-pointer"
+    :class="[
+      'cursor-pointer transition-colors duration-200',
+      isSelected() 
+        ? 'bg-blue-50 border-l-4 border-l-blue-500' 
+        : 'hover:bg-gray-50'
+    ]"
   >
     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
       {{ sensor.id }}

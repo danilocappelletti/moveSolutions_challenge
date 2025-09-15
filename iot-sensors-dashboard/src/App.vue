@@ -1,24 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { Sensor } from './types'
-import Header from './components/main/Header.vue'
-import SensorTable from './components/SensorTable.vue'
-import SensorChart from './components/Chart.vue'
+import { useSensorStore } from '@/stores/sensorStore'
+import Header from '@/components/main/Header.vue'
+import SensorTable from '@/components/SensorTable.vue'
+import SensorChart from '@/components/Chart.vue'
 
 const sensors = ref<Sensor[]>([])
 const loading = ref<boolean>(true)
 const selectedSensor = ref<Sensor | null>(null)
+
+const sensorStore = useSensorStore()
 
 onMounted(async () => {
   try {
     const response = await fetch('/data/sensors.json')
     const data: Sensor[] = await response.json()
     sensors.value = data
+    
+    await sensorStore.initializeData()
+    sensorStore.startLiveUpdates()
   } catch (error) {
     console.error('Error loading sensors:', error)
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  sensorStore.stopLiveUpdates()
 })
 
 const handleSensorSelected = (sensor: Sensor) => {
@@ -36,11 +46,12 @@ const handleSensorSelected = (sensor: Sensor) => {
           <SensorTable 
             :sensors="sensors" 
             :loading="loading"
+            :selected-sensor="selectedSensor"
             @sensor-selected="handleSensorSelected"
           />
         </div>
-        
-        <!-- Chart - takes 3 columns (~43%) -->
+
+        <!-- Chart -->
         <div class="xl:col-span-3 space-y-6">
           <SensorChart :sensor="selectedSensor" />
         </div>

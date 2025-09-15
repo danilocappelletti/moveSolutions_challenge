@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import type { Sensor } from '../types'
-import { getAllLastValues } from '../api/mockApis'
+import { useSensorStore } from '../stores/sensorStore'
 import SensorTableRow from './tableComponents/SensorTableRow.vue'
 import SensorTableHead from './tableComponents/SensorTableHead.vue'
+import TableHeader from './tableComponents/TableHeader.vue'
 
 interface Props {
   sensors: Sensor[]
   loading: boolean
+  selectedSensor: Sensor | null
 }
 
 const props = defineProps<Props>()
@@ -19,30 +21,7 @@ const emit = defineEmits<{
 const sortColumn = ref<string>('')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
-const lastValues = ref<Record<string, number>>({})
-const loadingLastValues = ref(true)
-
-onMounted(async () => {
-  loadingLastValues.value = true
-  
-  try {
-    const values = await getAllLastValues()
-    lastValues.value = values
-  } catch (error) {
-    console.error('Error fetching last values:', error)
-  } finally {
-    loadingLastValues.value = false
-  }
-})
-
-const getLastValue = (sensorId: string): number => {
-  return lastValues.value[sensorId] || 0
-}
-
-const getStatus = (sensor: Sensor): 'OK' | 'ALARM' => {
-  const lastValue = getLastValue(sensor.id)
-  return lastValue > sensor.threshold ? 'ALARM' : 'OK'
-}
+const sensorStore = useSensorStore()
 
 const sortedSensors = computed(() => {
   if (!sortColumn.value) return props.sensors
@@ -52,8 +31,8 @@ const sortedSensors = computed(() => {
     let bValue: any = b[sortColumn.value as keyof Sensor]
 
     if (sortColumn.value === 'status') {
-      aValue = getStatus(a)
-      bValue = getStatus(b)
+      aValue = sensorStore.getSensorStatus(a)
+      bValue = sensorStore.getSensorStatus(b)
     }
     
     if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1
@@ -81,9 +60,11 @@ const selectSensor = (sensor: Sensor) => {
 
 <template>
   <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h3 class="text-lg font-medium text-gray-900">Sensors Overview</h3>
-    </div>
+    <TableHeader 
+      title="Sensors Overview"
+      :is-live="sensorStore.isLiveUpdating"
+      :show-manual-update="true"
+    />
     
     <div v-if="loading" class="p-6 text-center">
       <p class="text-gray-500">Loading sensors...</p>
@@ -101,9 +82,10 @@ const selectSensor = (sensor: Sensor) => {
             v-for="sensor in sortedSensors" 
             :key="sensor.id"
             :sensor="sensor"
-            :last-value="getLastValue(sensor.id)"
-            :loading-last-values="loadingLastValues"
-            :status="getStatus(sensor)"
+            :last-value="sensorStore.getLastValueForSensor(sensor.id)"
+            :loading-last-values="false"
+            :status="sensorStore.getSensorStatus(sensor)"
+            :selected-sensor="selectedSensor"
             @sensor-selected="selectSensor"
           />
         </tbody>

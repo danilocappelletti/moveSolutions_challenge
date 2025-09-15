@@ -8,7 +8,7 @@
           </div>
           <div class="flex items-center space-x-2">
             <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span class="text-sm text-gray-500">Live</span>
+            <span class="text-sm text-gray-500">Live - Auto updates every 10 seconds</span>
           </div>
         </div>
       </div>
