@@ -41,7 +41,7 @@ I saw based on the data provided that sensors typically collect data every **45 
 
 ### Styling
 - Tailwind CSS classes throughout components
-- Modify `tailwind.config.js` for theme customization
 - Component-scoped styles where needed
+
 
 
